@@ -1,0 +1,33 @@
+name: Sync with upstream
+
+# Keeps this fork up to date with Inside4ndroid/TMDB-Embed-API:
+#  - `main` mirrors upstream exactly (fast-forward only, never diverges)
+#  - `deploy` = main + deployment files (this workflow, render.yaml, render-config/)
+# Render watches `deploy`, so every upstream update auto-deploys.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: deploy
+          fetch-depth: 0
+
+      - name: Sync main from upstream and merge into deploy
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/Inside4ndroid/TMDB-Embed-API.git
+          git fetch upstream main
+          git push origin upstream/main:main
+          git merge upstream/main --no-edit
+          git push origin deploy
