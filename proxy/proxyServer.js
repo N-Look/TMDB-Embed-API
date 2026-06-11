@@ -118,11 +118,17 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
     for (const line of lines) {
         if (line.startsWith('#')) {
             if (line.startsWith('#EXT-X-KEY:')) {
-                const regex = /https?:\/\/[^""\s]+/g; const keyUrl = regex.exec(line)?.[0];
-                if (keyUrl) {
-                    const proxyUrl = `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(keyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
-                    out.push(line.replace(keyUrl, proxyUrl));
-                    if (!isCacheDisabled()) prefetchSegment(keyUrl, headers);
+                // Resolve the key URI relative to the playlist — many providers
+                // (e.g. vixsrc) emit a relative URI="/storage/enc.key" which
+                // would otherwise resolve against the proxy host and 404.
+                const uriMatch = line.match(/URI="([^"]+)"/);
+                if (uriMatch) {
+                    try {
+                        const keyUrl = new URL(uriMatch[1], targetUrl).href;
+                        const proxyUrl = `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(keyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                        out.push(line.replace(uriMatch[1], proxyUrl));
+                        if (!isCacheDisabled()) prefetchSegment(keyUrl, headers);
+                    } catch { out.push(line); }
                 } else out.push(line);
             } else if (line.startsWith('#EXT-X-MEDIA:') || line.startsWith('#EXT-X-I-FRAME-STREAM-INF:')) {
                 const uriMatch = line.match(/URI="([^"]+)"/);
