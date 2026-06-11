@@ -12,7 +12,9 @@ services:
     # filesystem is ephemeral and the admin panel can't persist settings here.
     # Run node directly — the upstream start script uses nodemon for admin-
     # triggered restarts, which we don't need in production.
-    startCommand: cp render-config/user-config.json utils/user-config.json && node apiServer.js
+    # Heap cap keeps a runaway scrape from slow memory death — Render just
+    # restarts the process instead (free instance has 512MB total).
+    startCommand: cp render-config/user-config.json utils/user-config.json && node --max-old-space-size=400 apiServer.js
     envVars:
       - key: TMDB_API_KEY
         sync: false # set in the Render dashboard (TMDB v3 API key)
